@@ -49,9 +49,8 @@ jobs:
           python -m agentjudge audit verify
 
       - name: Scenario, corpus and regression guard
-        run: |
-          python -m agentjudge eval --report var/reports/eval.json \
-            --baseline datasets/baseline.json --check
+        # 单行命令：Windows runner 默认 pwsh，不接受行尾反斜杠续行
+        run: python -m agentjudge eval --report var/reports/eval.json --baseline datasets/baseline.json --check
 
       - name: Ledger export smoke test
         run: |

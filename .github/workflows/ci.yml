@@ -45,6 +45,7 @@ jobs:
           $env:PYTHONIOENCODING = "cp1252"
           python -m agentjudge doctor
           python -m agentjudge intercept --tool shell.exec --arg "command=rm -rf ~" --session ci-cp1252
+          if ($LASTEXITCODE -ne 2) { throw "expected deny exit code 2, got $LASTEXITCODE" }
 
       - name: Scenario & corpus evaluation
         run: python -m agentjudge eval --report var/reports/eval.json

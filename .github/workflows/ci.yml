@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }} / py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e .
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Doctor
+        run: python -m agentjudge doctor
+
+      - name: Scenario & corpus evaluation
+        run: python -m agentjudge eval --report var/reports/eval.json
+
+      - name: Audit chain verification
+        run: python -m agentjudge audit verify
+
+      - name: Upload evaluation report
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: |
+            var/reports/eval.json
+            var/reports/eval.md
+          retention-days: 14
+
+  skill-check:
+    name: demo skill inspection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - name: Demo skill must be quarantined
+        run: |
+          python -m agentjudge skill inspect examples/skills/note-taker --json > /tmp/skill.json || true
+          python - <<'PY'
+          import json
+          report = json.load(open("/tmp/skill.json", encoding="utf-8"))
+          assert report["trust"] == "quarantined", report["trust"]
+          assert "network" in report["observed"]
+          print("demo skill quarantined as expected")
+          PY

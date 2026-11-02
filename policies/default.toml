@@ -1,0 +1,404 @@
+# =============================================================================
+# 鉴行 · AgentJudge 基线策略
+# =============================================================================
+# 格式：TOML（Python 标准库 tomllib，零依赖）
+# 说明：所有相对路径都相对于启动目录解析。
+# 修改后执行 `agentjudge rules test` 与 `agentjudge eval` 验证效果。
+# =============================================================================
+
+schema = 1
+name = "baseline"
+version = "2026.11.1"
+mode = "enforce"            # enforce | monitor（监控模式只记录不拦截）
+fail_closed_action = "deny" # 守卫异常/语义研判失败时的动作，只允许 deny | escalate
+workspace_root = "."
+contracts_dir = "contracts"
+
+[thresholds]
+# 风险分 0-100：达到 escalate_at 至少转人工，达到 deny_at 直接拒绝
+escalate_at = 30
+deny_at = 70
+
+# -----------------------------------------------------------------------------
+# 网络白名单：只有这里列出的主机允许主动访问
+# -----------------------------------------------------------------------------
+[network]
+allow_hosts = [
+  "localhost", "127.0.0.1", "::1",
+  "github.com", "api.github.com", "raw.githubusercontent.com",
+  "pypi.org", "files.pythonhosted.org",
+  "docs.python.org", "developer.mozilla.org",
+  "registry.npmjs.org",
+]
+internal_hosts = ["localhost", "127.0.0.1", "::1", "*.internal", "*.local", "10.*", "192.168.*"]
+
+# -----------------------------------------------------------------------------
+# 语义研判（Watcher）：只读调查、最多 8 轮
+# -----------------------------------------------------------------------------
+[watcher]
+enabled = true
+provider = "none"           # none = 离线启发式研判；openai = OpenAI 兼容接口
+base_url = "https://api.openai.com/v1"
+model = "gpt-4o-mini"
+api_key_env = "AGENTJUDGE_LLM_KEY"
+max_rounds = 8
+timeout_s = 20.0
+min_confidence = 0.75
+can_release = false         # 不允许模型单独“放行”，只允许它把灰区收紧为拒绝
+on_error = "deny"
+max_evidence = 8
+
+# -----------------------------------------------------------------------------
+# 审计链
+# -----------------------------------------------------------------------------
+[audit]
+db_path = "var/agentjudge.db"
+anchor_path = "var/tail.anchor"
+key_file = "var/hmac.key"
+key_env = "AGENTJUDGE_HMAC_KEY"
+key_id = "k1"
+seal_interval_s = 300
+
+# -----------------------------------------------------------------------------
+# 守卫开关与参数
+# -----------------------------------------------------------------------------
+[guards.canary]
+enabled = true
+auto_canary = true
+
+[guards.stego]
+enabled = true
+max_scan_chars = 200000
+base64_min_len = 64
+entropy_threshold = 3.6
+
+[guards.contract]
+enabled = true
+unknown_tool = "allow"      # 未登记工具：allow | escalate | deny
+
+[guards.rules]
+enabled = true
+quarantine_results = true   # 读取到注入指令时“读取即隔离”
+
+[guards.dataflow]
+enabled = true
+report_write_flows = true
+
+# =============================================================================
+# 规则：确定性、可解释、可版本化
+# =============================================================================
+
+# -- 破坏性命令 ---------------------------------------------------------------
+[[rules]]
+id = "SHELL-RM-RF"
+title = "递归强制删除"
+pattern = '\brm\s+(?:-[A-Za-z]+\s+)*-[A-Za-z]*[rR][A-Za-z]*[fF][A-Za-z]*\b|\brm\s+(?:-[A-Za-z]+\s+)*-[A-Za-z]*[fF][A-Za-z]*[rR][A-Za-z]*\b'
+severity = "critical"
+action = "deny"
+targets = ["command"]
+explain = "rm -rf 不可恢复，且常用于清理现场或删除保护目录；默认直接拒绝。"
+tags = ["destructive", "shell"]
+
+[[rules]]
+id = "SHELL-DISK"
+title = "磁盘/分区破坏性操作"
+pattern = '\bdd\s+if=|\bmkfs(?:\.\w+)?\b|\bfdisk\s|\bparted\s'
+severity = "critical"
+action = "deny"
+targets = ["command"]
+explain = "dd/mkfs/fdisk 会破坏文件系统，正常智能体任务不应触达。"
+tags = ["destructive"]
+
+[[rules]]
+id = "SHELL-SHRED"
+title = "不可恢复擦除"
+pattern = '\bshred\b'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "shred 用于覆写文件内容，常见于销毁痕迹。"
+tags = ["destructive"]
+
+[[rules]]
+id = "SHELL-REVERSE"
+title = "反弹 Shell / 网络执行"
+pattern = '\b(?:nc|ncat|netcat|socat)\b[^\n]*(?:\s-e\s|\s-c\s|exec)|/dev/tcp/|\bbash\s+-i\b'
+severity = "critical"
+action = "deny"
+targets = ["command"]
+explain = "反弹 shell 是典型的远程控制通道。"
+tags = ["rce", "shell"]
+
+[[rules]]
+id = "SHELL-PIPE-SH"
+title = "远程脚本管道执行"
+pattern = '\b(?:curl|wget|http|xh)\b[^\n|;]*\|\s*(?:sudo\s+)?(?:ba|z|k|da)?sh\b'
+severity = "critical"
+action = "deny"
+targets = ["command"]
+explain = "curl | bash 等于把远端任意代码直接交给解释器。"
+tags = ["rce", "supply_chain"]
+
+[[rules]]
+id = "SHELL-ENCODED-EXEC"
+title = "编码后执行"
+pattern = '\bbase64\s+(?:-d|--decode)\b[^\n]*\|\s*(?:ba|z|k)?sh|\beval\s+\$\(|\bexec\s+\$\('
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "base64 解码后直接执行，是绕过文本审查的常见手法。"
+tags = ["obfuscation", "rce"]
+
+[[rules]]
+id = "SHELL-NOHUP"
+title = "后台常驻进程"
+pattern = '\bnohup\b|\b(?:setsid|disown)\b'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "脱离会话的常驻进程难以回收，可能是后门或挖矿。"
+tags = ["persistence"]
+
+[[rules]]
+id = "SHELL-PERSIST"
+title = "写入启动项/定时任务"
+pattern = '(?:>>?|\btee\b)[^\n]{0,80}(?:\.bashrc|\.bash_profile|\.profile|\.zshrc|/etc/cron|crontab|/etc/rc\.local|/etc/systemd/system)'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "向 shell 启动文件或定时任务写入内容，是持久化后门的标准动作。"
+tags = ["persistence"]
+
+[[rules]]
+id = "SHELL-CRON"
+title = "修改定时任务"
+pattern = '\bcrontab\s+(?!-l\b)(?:-[eru]\b|[^\s-])'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "除只读查看（crontab -l）外的 crontab 操作都会改变系统行为。"
+tags = ["persistence"]
+
+[[rules]]
+id = "SHELL-BIND-ALL"
+title = "监听全部网卡"
+pattern = '--bind[= ]+0\.0\.0\.0|\b0\.0\.0\.0:\d+'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "绑定 0.0.0.0 会把服务暴露到所有网络接口，常见于外联与横向移动。"
+tags = ["exposure", "network"]
+
+[[rules]]
+id = "SHELL-ENV-DUMP"
+title = "转储进程环境变量"
+pattern = '\bprintenv\b|\benv\s*\|\s*(?:grep|sort|head|cat|less|more)|\bset\s*\|\s*grep|\bcat\s+/proc/[^\s]*/environ'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "环境变量里常有 API Key、Token 与数据库口令。"
+tags = ["credential_theft"]
+
+[[rules]]
+id = "SHELL-CHMOD-777"
+title = "过度授权"
+pattern = '\bchmod\s+(?:-[A-Za-z]+\s+)*(?:777|a\+rwx|o\+w)\b|\bchown\s+-[A-Za-z]*R\b'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "777 / o+w / chown -R 会让任意用户获得读写或属主权限。"
+tags = ["privilege", "misconfiguration"]
+
+[[rules]]
+id = "SHELL-SUDO"
+title = "提权执行"
+pattern = '\bsudo\b'
+severity = "medium"
+action = "escalate"
+targets = ["command"]
+explain = "sudo 会突破当前权限边界，需要人工确认。"
+tags = ["privilege"]
+
+[[rules]]
+id = "SHELL-HISTORY"
+title = "清除命令历史"
+pattern = '\bhistory\s+-c\b|>\s*~?/\.bash_history|\bunset\s+HISTFILE'
+severity = "high"
+action = "deny"
+targets = ["command"]
+explain = "清除历史记录是典型的反取证行为。"
+tags = ["anti_forensics"]
+
+[[rules]]
+id = "SHELL-INLINE-CODE"
+title = "内联解释器执行"
+pattern = '\b(?:python[0-9.]*|perl|ruby|node)\s+-[ce]\s'
+severity = "medium"
+action = "escalate"
+targets = ["command"]
+explain = "内联代码难以审查，需确认其真实意图。"
+tags = ["execution"]
+
+[[rules]]
+id = "SHELL-NET-EXTERNAL"
+title = "命令行发起网络请求"
+pattern = '\b(?:curl|wget|http|xh|scp|rsync|ftp)\b'
+severity = "medium"
+action = "escalate"
+targets = ["command"]
+unless_host_allowed = true
+explain = "命令行网络请求可能是正常下载，也可能是数据外发；白名单内主机不打扰。"
+tags = ["network"]
+
+[[rules]]
+id = "SHELL-DOWNLOAD-RUN"
+title = "下载后立即执行"
+pattern = '\b(?:curl|wget)\b[^\n]*(?:&&|;)\s*(?:chmod\s+\+x\s+[^\s;]+|(?:ba|z|k)?sh\s+)'
+severity = "critical"
+action = "deny"
+targets = ["command"]
+explain = "下载 → 赋权 → 执行，是供应链投毒的经典三段式。"
+tags = ["supply_chain", "rce"]
+
+# -- 文件系统 -----------------------------------------------------------------
+[[rules]]
+id = "FS-SSH-KEY"
+title = "访问 SSH 私钥/授权文件"
+pattern = '(?:~|\$HOME|/home/[^/\s]+)/\.ssh/(?:id_[a-z0-9]+|authorized_keys|config)|\bid_(?:rsa|ed25519|ecdsa)\b'
+severity = "critical"
+action = "deny"
+targets = ["path", "command", "arg.*"]
+explain = "SSH 私钥可用于横向移动，属最高敏感级别。"
+tags = ["credential_theft"]
+
+[[rules]]
+id = "FS-SYSTEM-ACCOUNT"
+title = "读取系统账号文件"
+pattern = '/etc/(?:shadow|passwd|sudoers|gshadow)\b'
+severity = "critical"
+action = "deny"
+targets = ["path", "command", "arg.*"]
+explain = "passwd/shadow/sudoers 是提权与撞库的原料。"
+tags = ["credential_theft"]
+
+[[rules]]
+id = "FS-CLOUD-CRED"
+title = "访问云厂商/容器凭据"
+pattern = '(?:~|\$HOME|/home/[^/\s]+)/\.(?:aws/credentials|kube/config|netrc|pgpass|docker/config\.json)|\.aws/credentials\b'
+severity = "high"
+action = "deny"
+targets = ["path", "command", "arg.*"]
+explain = "云凭据泄露会直接导致基础设施失守。"
+tags = ["credential_theft"]
+
+[[rules]]
+id = "FS-DOTENV"
+title = "读取 .env 配置"
+pattern = '(?:^|[\\/])\.env$'
+severity = "medium"
+action = "escalate"
+targets = ["path", "arg.*"]
+explain = ".env 常含明文密钥，读取需人工确认。"
+tags = ["credential_theft"]
+
+[[rules]]
+id = "FS-SHELL-RC"
+title = "改写 shell 启动文件"
+pattern = '(?:^|[\\/])\.(?:bashrc|zshrc|bash_profile|profile)$'
+severity = "high"
+action = "deny"
+targets = ["path", "arg.*"]
+explain = "改写启动文件可实现无感持久化。"
+tags = ["persistence"]
+
+[[rules]]
+id = "FS-SYSTEM-WRITE"
+title = "写入系统目录"
+pattern = '^(?:/(?:etc|usr|bin|sbin|boot|lib)/|[A-Za-z]:[\\/](?:Windows|Program Files))'
+severity = "high"
+action = "deny"
+targets = ["path"]
+explain = "系统目录写入会改变主机行为，超出智能体职责。"
+tags = ["privilege"]
+
+[[rules]]
+id = "FS-TRAVERSAL"
+title = "路径穿越"
+pattern = '(?:^|[\\/])\.\.(?:[\\/]|$)'
+severity = "medium"
+action = "escalate"
+targets = ["path", "arg.*"]
+explain = "路径穿越常被用于访问工作区之外的文件。"
+tags = ["path_traversal"]
+
+# -- 内容注入（作用于读取到的内容与文本参数） ---------------------------------
+[[rules]]
+id = "INJ-IGNORE-PREV"
+title = "要求忽略既有指令"
+pattern = '(?i)(?:ignore|disregard|forget)[\s\S]{0,40}(?:previous|prior|above|earlier|all)[\s\S]{0,20}(?:instruction|prompt|rule|polic)|(?:忽略|无视|忘记|跳过)[\s\S]{0,12}(?:之前|以上|前面|所有|全部)(?:的)?(?:指令|指示|要求|规则|限制|审批)'
+severity = "critical"
+action = "deny"
+targets = ["content", "arg.*"]
+explain = "这是最典型的提示注入开场白，等价于要求放弃安全约束。"
+tags = ["instruction", "prompt_injection"]
+
+[[rules]]
+id = "INJ-APPROVAL-BYPASS"
+title = "要求跳过审批/确认"
+pattern = '(?i)(?:pre[- ]?approved|no\s+(?:further\s+)?(?:approval|confirmation)|skip\s+(?:the\s+)?(?:approval|confirmation)|without\s+(?:asking|confirmation))|(?:免|无需|不用|跳过|绕过|取消)[\s\S]{0,6}(?:再次)?(?:审批|确认|授权|人工)'
+severity = "critical"
+action = "deny"
+targets = ["content", "arg.*"]
+explain = "外部内容无权修改审批策略；出现此类表述即视为越权尝试。"
+tags = ["instruction", "prompt_injection"]
+
+[[rules]]
+id = "INJ-ROLE-HIJACK"
+title = "角色劫持/越狱话术"
+pattern = '(?i)(?:you are now|developer mode|jailbreak|system prompt\s*:|\[\s*INST\s*\]|<<\s*SYS\s*>>|<\|im_start\|>)'
+severity = "high"
+action = "deny"
+targets = ["content", "arg.*"]
+explain = "角色劫持话术试图替换系统提示，属高危注入。"
+tags = ["instruction", "prompt_injection"]
+
+[[rules]]
+id = "INJ-HIDDEN-HTML"
+title = "HTML 隐藏指令"
+pattern = '(?i)<[a-z]+[^>]*(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|opacity\s*:\s*0)[^>]*>'
+severity = "high"
+action = "deny"
+targets = ["content", "arg.*"]
+explain = "不可见 HTML 元素常被用来夹带指令。"
+tags = ["instruction", "stego"]
+
+[[rules]]
+id = "INJ-EXFIL-ASK"
+title = "诱导外发敏感信息"
+pattern = '(?i)(?:send|post|upload|exfiltrate|forward|转发|上传|发送)[\s\S]{0,24}(?:credential|secret|api[ _-]?key|private key|密码|密钥|凭据|令牌)'
+severity = "medium"
+action = "escalate"
+targets = ["content", "arg.*"]
+explain = "外部内容指示把凭据发出去，需人工确认。"
+tags = ["instruction", "exfiltration"]
+
+# -- 网络目标 -----------------------------------------------------------------
+[[rules]]
+id = "NET-METADATA"
+title = "访问云元数据服务"
+pattern = '169\.254\.169\.254|metadata\.google\.internal'
+severity = "critical"
+action = "deny"
+targets = ["url", "command", "arg.*"]
+explain = "云元数据接口可换取实例凭据，是 SSRF 的首要目标。"
+tags = ["ssrf", "credential_theft"]
+
+[[rules]]
+id = "NET-PASTE"
+title = "访问代码粘贴/临时文件服务"
+pattern = '(?:pastebin\.com|paste\.ee|transfer\.sh|0x0\.st|webhook\.site|requestbin|ngrok\.io|pipedream\.net)'
+severity = "high"
+action = "deny"
+targets = ["url", "command", "arg.*"]
+explain = "这些站点常用于外带数据或接收回连。"
+tags = ["exfiltration"]

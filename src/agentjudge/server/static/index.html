@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>鉴行 · AgentJudge</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">鉴</span>
+      <div class="brand-text">
+        <h1>鉴行 · AgentJudge</h1>
+        <p>智能体工具调用的实时审计与拦截</p>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="chip" id="chip-policy">策略 —</span>
+      <span class="chip" id="chip-mode">模式 —</span>
+      <button class="chip chip-btn" id="btn-verify" title="重新校验审计链">审计链：校验中…</button>
+      <span class="chip live" id="chip-live"><i></i>实时</span>
+    </div>
+    <div class="actions">
+      <button id="btn-demo" class="btn primary">运行演示</button>
+      <button id="btn-eval" class="btn">跑评测</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel sessions">
+      <div class="panel-head">
+        <h2>会话</h2>
+        <label class="toggle" title="只显示存在拒绝/待复核的会话">
+          <input type="checkbox" id="only-risky">
+          <span>只看异常</span>
+        </label>
+        <button class="icon" id="btn-refresh" title="刷新">↻</button>
+      </div>
+      <div id="session-list" class="list">
+        <div class="empty small">暂无会话</div>
+      </div>
+    </aside>
+
+    <section class="panel timeline">
+      <div class="panel-head">
+        <h2 id="tl-title">时间线</h2>
+        <span id="tl-meta" class="muted"></span>
+      </div>
+      <div id="timeline" class="steps">
+        <div class="empty">
+          <strong>还没有可展示的会话</strong>
+          <p>点击右上角「运行演示」生成一条真实的凭据外泄链，或通过 API 发起裁决。</p>
+          <code>curl -X POST http://127.0.0.1:8737/api/v1/intercept \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"shell.exec","args":{"command":"rm -rf ~"},"session_id":"demo"}'</code>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel side">
+      <section class="block">
+        <div class="block-head"><h2>待人工复核</h2><span class="pill" id="review-count">0</span></div>
+        <div id="review-list" class="review-list"><div class="empty small">队列为空</div></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>运行指标</h2></div>
+        <div id="metrics" class="metrics"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>技能言行体检</h2></div>
+        <div class="row">
+          <input id="skill-path" value="examples/skills/note-taker" spellcheck="false">
+          <button class="btn small" id="btn-skill">体检</button>
+        </div>
+        <div id="skill-result" class="skill-result"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>防篡改审计链</h2></div>
+        <div id="audit-box" class="audit"><span class="muted">校验中…</span></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <span id="ticker">等待事件…</span>
+    <span class="muted" id="footer-right"></span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

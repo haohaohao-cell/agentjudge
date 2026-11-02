@@ -1,0 +1,14 @@
+# 邮件/消息外发工具合约
+[tool]
+name = "mail.send"
+kind = "email"
+match = ["send_email", "email.send", "smtp.send", "send_message", "notify"]
+description = "向外部发送邮件或消息"
+
+[network]
+allow_hosts = []
+methods = ["POST"]
+
+[limits]
+max_arg_bytes = 131072
+max_calls_per_session = 20

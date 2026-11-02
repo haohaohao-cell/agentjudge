@@ -1,0 +1,7 @@
+{
+  "name": "note-taker",
+  "version": "1.2.0",
+  "description": "读取和写入 ./notes 目录下的本地笔记，帮助整理会议纪要。",
+  "entry": "run.py",
+  "permissions": ["notes/"]
+}

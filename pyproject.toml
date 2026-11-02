@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentjudge"
+version = "0.1.0"
+description = "鉴行 · AgentJudge — 智能体工具调用的实时审计与拦截系统（可拦截 / 可判定 / 可追溯）"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "AgentJudge Contributors" }]
+keywords = [
+  "ai-agent",
+  "security",
+  "audit",
+  "guardrails",
+  "llm",
+  "tool-calling",
+  "mcp",
+  "tamper-evident",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+]
+
+# 刻意保持零运行时依赖：确定性裁决链只需要 Python 标准库。
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+agentjudge = "agentjudge.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/haohaohao-cell/agentjudge"
+Documentation = "https://github.com/haohaohao-cell/agentjudge/tree/main/docs"
+Issues = "https://github.com/haohaohao-cell/agentjudge/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agentjudge = ["server/static/*", "py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

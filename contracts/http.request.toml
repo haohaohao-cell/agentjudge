@@ -1,0 +1,23 @@
+# HTTP 请求工具合约
+[tool]
+name = "http.request"
+kind = "network"
+match = ["http_get", "http_post", "http.request", "fetch", "web_fetch", "browse", "http"]
+description = "发起 HTTP(S) 请求"
+
+[network]
+allow_hosts = [
+  "localhost",
+  "127.0.0.1",
+  "github.com",
+  "api.github.com",
+  "raw.githubusercontent.com",
+  "docs.python.org",
+  "pypi.org",
+  "registry.npmjs.org",
+]
+methods = ["GET", "HEAD", "POST"]
+
+[limits]
+max_arg_bytes = 262144
+max_calls_per_session = 100

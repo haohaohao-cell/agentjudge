@@ -1,0 +1,32 @@
+services:
+  agentjudge:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: agentjudge:0.1.0
+    container_name: agentjudge
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8737:8737"
+    environment:
+      AGENTJUDGE_TOKEN: "${AGENTJUDGE_TOKEN:?请先导出 AGENTJUDGE_TOKEN}"
+      AGENTJUDGE_LLM_KEY: "${AGENTJUDGE_LLM_KEY:-}"
+      AGENTJUDGE_POLICY: /app/policies/default.toml
+    volumes:
+      # 审计库、HMAC 密钥与尾锚必须持久化，否则重启后链无法校验
+      - agentjudge-data:/app/var
+      - ../policies:/app/policies:ro
+      - ../contracts:/app/contracts:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  agentjudge-data:

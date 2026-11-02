@@ -1,0 +1,49 @@
+name: Bug report
+description: 报告一个可复现的问题
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。安全漏洞请**不要**在这里提交，见 SECURITY.md。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 期望行为 vs 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 命令、策略片段、会话步骤（请脱敏，勿贴真实密钥）
+      placeholder: |
+        1. PYTHONPATH=src python -m agentjudge intercept --tool ...
+        2. 观察输出 ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      placeholder: |
+        OS / Python 版本 / 是否安装了第三方包 / 策略文件
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志
+      description: `agentjudge doctor`、`agentjudge audit verify` 的输出，或裁决 JSON
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 确认
+      options:
+        - label: 已搜索过现有 issue
+          required: true
+        - label: 内容已脱敏（无真实密钥/凭据）
+          required: true

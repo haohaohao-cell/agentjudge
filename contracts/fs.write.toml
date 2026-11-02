@@ -1,0 +1,28 @@
+# 文件写入/编辑工具合约
+[tool]
+name = "fs.write"
+kind = "fs_write"
+match = ["write_file", "append_file", "edit_file", "fs.write_*", "*.write", "save_file", "fs.append"]
+description = "写入或修改本地文件"
+
+[paths]
+allow_write = ["./**", "{{workspace}}/**", "/tmp/**"]
+deny_write = [
+  "~/.ssh/**",
+  "**/authorized_keys",
+  "/etc/**",
+  "/usr/**",
+  "/bin/**",
+  "/sbin/**",
+  "/boot/**",
+  "c:/windows/**",
+  "**/.bashrc",
+  "**/.zshrc",
+  "**/.bash_profile",
+  "**/.profile",
+  "**/.aws/credentials",
+]
+
+[limits]
+max_arg_bytes = 1048576
+max_calls_per_session = 300

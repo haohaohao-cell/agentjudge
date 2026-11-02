@@ -1,0 +1,39 @@
+# 运行期目录：内容忽略，但保留目录占位
+var/*
+!var/.gitkeep
+
+# 运行产物
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+*.anchor
+*.key
+reports/
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+
+# 本地环境
+.env
+.env.*
+!.env.example

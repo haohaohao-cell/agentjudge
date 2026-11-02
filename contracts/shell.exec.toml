@@ -1,0 +1,18 @@
+# 命令执行工具合约
+[tool]
+name = "shell.exec"
+kind = "shell"
+match = ["shell", "bash", "sh", "exec", "execute", "run", "run_command", "command", "cmd", "terminal", "subprocess"]
+description = "在主机上执行命令"
+
+[paths]
+deny_write = ["~/.ssh/**", "/etc/**", "**/.bashrc", "**/.zshrc"]
+
+[limits]
+max_arg_bytes = 65536
+max_calls_per_session = 200
+
+[scripts]
+# 只允许执行白名单目录中的脚本：写文件再执行 = 绕过审计
+require_trusted = true
+trusted_dirs = ["./scripts/**", "./bin/**", "./tools/**", "./deploy/**"]

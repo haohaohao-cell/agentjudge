@@ -1,0 +1,5 @@
+# 监控模式：只记录“本应拦截”，不阻断业务。用于上线前的灰度评估。
+extend = "default.toml"
+name = "baseline-monitor"
+version = "2026.11.1-monitor"
+mode = "monitor"

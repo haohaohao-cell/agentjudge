@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题（私密渠道）
+    url: https://github.com/haohaohao-cell/agentjudge/security/advisories/new
+    about: 请勿公开披露漏洞，使用 GitHub 私密安全公告
+  - name: 使用问题与讨论
+    url: https://github.com/haohaohao-cell/agentjudge/discussions
+    about: 安装、策略配置、误报调优等问题

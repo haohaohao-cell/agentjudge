@@ -1,0 +1,25 @@
+# 文件读取工具合约
+[tool]
+name = "fs.read"
+kind = "fs_read"
+match = ["read_file", "cat_file", "fs.read_*", "*.read", "open_file"]
+description = "读取本地文件内容"
+
+[paths]
+allow_read = ["./**", "{{workspace}}/**", "/tmp/**", "~/.config/**"]
+deny_read = [
+  "~/.ssh/**",
+  "**/.ssh/id_*",
+  "**/authorized_keys",
+  "**/.aws/credentials",
+  "**/.kube/config",
+  "**/.netrc",
+  "/etc/shadow",
+  "/etc/passwd",
+  "/etc/sudoers",
+  "**/.env",
+]
+
+[limits]
+max_arg_bytes = 65536
+max_calls_per_session = 300

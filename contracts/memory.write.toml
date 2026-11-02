@@ -1,0 +1,10 @@
+# 记忆写入工具合约
+[tool]
+name = "memory.write"
+kind = "memory"
+match = ["memory_write", "memory.write", "remember", "memory_store"]
+description = "向智能体长期记忆写入内容"
+
+[limits]
+max_arg_bytes = 32768
+max_calls_per_session = 50

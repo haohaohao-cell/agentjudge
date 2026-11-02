@@ -1,0 +1,28 @@
+[Unit]
+Description=AgentJudge - 智能体工具调用实时审计与拦截
+Documentation=https://github.com/agentjudge/agentjudge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agentjudge
+Group=agentjudge
+WorkingDirectory=/opt/agentjudge
+EnvironmentFile=/etc/agentjudge/env
+ExecStart=/opt/agentjudge/.venv/bin/agentjudge serve --host 127.0.0.1 --port 8737
+Restart=always
+RestartSec=3
+# 审计与密钥目录必须可写；其余保持只读
+ReadWritePaths=/opt/agentjudge/var
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

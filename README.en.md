@@ -78,7 +78,7 @@ def run(command: str) -> str: ...
 | Benign task completion | 96.4% |
 | False positive rate | 3.6% (2 / 55 grey-zone ops) |
 | Decision latency | p50 **0.48 ms** / p95 **0.80 ms** |
-| Unit tests | 98 passing |
+| Unit tests | 143 passing |
 
 Self-built corpus; reproduce with `agentjudge eval`. See [docs/evaluation.md](docs/evaluation.md).
 

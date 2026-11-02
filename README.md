@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-98%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-143%20passed-brightgreen)](tests/)
 
 > 徽章与链接按 `haohaohao-cell/agentjudge` 预置；若仓库名不同，全局替换即可。首次推送并跑通 CI 后徽章自动生效。
 
@@ -86,7 +86,7 @@ agentjudge doctor
 | 良性任务完成率 | 96.4% |
 | 误报率 FPR | 3.6%（2 / 55，均为灰区运维操作） |
 | 裁决延迟 | p50 **0.48 ms** / p95 **0.80 ms** |
-| 单元测试 | 98 个，全部通过 |
+| 单元测试 | 143 个，全部通过 |
 
 > 数据来自自建语料，不代表第三方评测结论；复现方式与口径见 [`docs/evaluation.md`](docs/evaluation.md)。
 > 延迟为确定性路径（无 LLM 调用）在普通笔记本上的实测值。
@@ -336,7 +336,7 @@ agentjudge/
 ├── policies/               # 策略、监控模式
 ├── contracts/              # 工具合约、技能合约
 ├── datasets/               # 17 个红队场景 + 55 条良性语料
-├── tests/                  # 98 个测试
+├── tests/                  # 143 个测试
 ├── docs/                   # 架构、威胁模型、策略手册、API、部署、评测
 └── deploy/                 # Dockerfile、compose、systemd
 ```

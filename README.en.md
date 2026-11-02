@@ -38,7 +38,10 @@ audit from a single call to the **session-level data flow**.
 - **Tamper-evident audit chain** — HMAC-SHA256 hash chain plus an out-of-database tail anchor.
   Modify, delete, truncate or replace records and verification fails with the exact break point.
 - **Alerts and ledger** — denies, escalations and quarantines are pushed to Feishu, WeCom,
-  DingTalk, Slack, generic webhooks or SMTP email; the workbench ships a cross-session event ledger.
+  DingTalk, Slack, generic webhooks or SMTP email; the cross-session event ledger exports to
+  CSV (Excel-ready) or a self-contained HTML report.
+- **Policy regression guard** — a committed baseline (`datasets/baseline.json`) makes CI fail on
+  new false positives, higher ASR or a scene that used to pass.
 - **Zero runtime dependencies** — pure Python standard library (TOML config). Offline,
   air-gapped, no GPU, no external service.
 - **Sidecar integration** — SDK decorator, HTTP API, MCP proxy, OpenClaw pointer plugin.
@@ -78,7 +81,7 @@ def run(command: str) -> str: ...
 | Benign task completion | 96.4% |
 | False positive rate | 3.6% (2 / 55 grey-zone ops) |
 | Decision latency | p50 **0.48 ms** / p95 **0.80 ms** |
-| Unit tests | 143 passing |
+| Unit tests | 173 passing |
 
 Self-built corpus; reproduce with `agentjudge eval`. See [docs/evaluation.md](docs/evaluation.md).
 

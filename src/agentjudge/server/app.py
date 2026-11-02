@@ -21,6 +21,7 @@ from urllib.parse import parse_qs, urlparse
 from ..evaluation import load_corpus, load_scenarios, run_evaluation
 from ..judge import Judge
 from ..skillcheck import inspect_skill, write_contract
+from ..audit import write_csv, write_html
 from ..types import Action, ToolCall
 from ..utils import utc_now_iso
 from ..version import __version__
@@ -306,10 +307,36 @@ class App:
         return self._json({"records": [r.to_dict() for r in records]})
 
     def h_audit_export(self, body: dict[str, Any], query: dict[str, list[str]], params: dict[str, str]) -> Any:
-        target = Path("var/exports") / f"agentjudge-{time.strftime('%Y%m%d-%H%M%S')}.zip"
-        path = self.judge.store.export_bundle(target, policy_snapshot=self.judge.policy.public())
-        data = path.read_bytes()
-        return 200, "application/zip", data
+        fmt = (query.get("format", ["zip"])[0] or "zip").lower()
+        kind = query.get("kind", [None])[0]
+        session = query.get("session", [None])[0]
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        directory = Path("var/exports")
+        records = lambda: self.judge.store.iter_filtered(session_id=session, kind=kind)  # noqa: E731
+        if fmt == "csv":
+            path = write_csv(directory / f"agentjudge-{stamp}.csv", records())
+            content_type, filename = "text/csv; charset=utf-8", f"agentjudge-{stamp}.csv"
+        elif fmt in {"html", "htm"}:
+            path = write_html(
+                directory / f"agentjudge-{stamp}.html",
+                records(),
+                verification=self.judge.verify(),
+                policy_version=self.judge.policy.version_label,
+            )
+            content_type, filename = "text/html; charset=utf-8", f"agentjudge-{stamp}.html"
+        elif fmt == "zip":
+            path = self.judge.store.export_bundle(
+                directory / f"agentjudge-{stamp}.zip", policy_snapshot=self.judge.policy.public()
+            )
+            content_type, filename = "application/zip", f"agentjudge-{stamp}.zip"
+        else:
+            return self._json({"error": f"unsupported_format:{fmt}"}, status=400)
+        return (
+            200,
+            content_type,
+            path.read_bytes(),
+            {"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     # -- 技能 -------------------------------------------------------------
     def h_skill_inspect(self, body: dict[str, Any], query: dict[str, list[str]], params: dict[str, str]) -> Any:
@@ -491,8 +518,13 @@ class Handler(BaseHTTPRequestHandler):
             self._json_error(413, "body_too_large")
             return
         body = self.rfile.read(length) if length else b""
-        status, content_type, payload = self.app.dispatch(method, parsed.path, query, body)
-        self._send(status, content_type, payload)
+        result = self.app.dispatch(method, parsed.path, query, body)
+        if len(result) == 4:
+            status, content_type, payload, extra = result
+        else:
+            status, content_type, payload = result
+            extra = None
+        self._send(status, content_type, payload, extra=extra)
 
     def _handle_sse(self, query: dict[str, list[str]]) -> None:
         if not self._auth_ok(query):

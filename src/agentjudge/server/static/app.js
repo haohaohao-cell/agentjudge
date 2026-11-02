@@ -560,6 +560,22 @@ function closeLedger() {
   $('ledger').classList.add('hidden');
 }
 
+function exportLedger(format) {
+  const params = new URLSearchParams({ format });
+  const kind = $('ledger-kind').value;
+  const session = $('ledger-session').value.trim();
+  if (kind) params.set('kind', kind);
+  if (session) params.set('session', session);
+  if (state.token) params.set('token', state.token);
+  const link = document.createElement('a');
+  link.href = `/api/v1/audit/export?${params.toString()}`;
+  link.download = '';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTicker(`正在导出 ${format.toUpperCase()} 台账…`);
+}
+
 /* ---------------- 启动 ---------------- */
 async function boot() {
   $('btn-verify').addEventListener('click', verifyChain);
@@ -570,6 +586,8 @@ async function boot() {
   $('btn-ledger').addEventListener('click', openLedger);
   $('btn-ledger-close').addEventListener('click', closeLedger);
   $('btn-ledger-refresh').addEventListener('click', loadLedger);
+  $('btn-export-csv').addEventListener('click', () => exportLedger('csv'));
+  $('btn-export-html').addEventListener('click', () => exportLedger('html'));
   $('ledger-kind').addEventListener('change', loadLedger);
   $('ledger-session').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') loadLedger();

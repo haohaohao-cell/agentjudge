@@ -19,12 +19,19 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .alerting import AlertEvent, build_alerting
-from .audit import AuditStore, Keyring
+from .audit import AuditStore, Keyring, write_csv, write_html
 from .contracts import ContractBook
 from .evaluation import load_corpus, load_scenarios, report_markdown, run_evaluation
 from .guards.rules import RulesGuard
 from .judge import Judge
 from .policy import Policy
+from .regression import (
+    baseline_from_report,
+    compare_report,
+    format_result,
+    load_baseline,
+    write_baseline,
+)
 from .skillcheck import inspect_skill, write_contract
 from .types import Action, ToolCall
 from .utils import display_width, mask_secrets, truncate
@@ -282,9 +289,24 @@ def cmd_audit(args: argparse.Namespace) -> int:
             CONSOLE.table(["#", "时间", "类型", "动作", "工具", "指纹"], rows)
             return 0
         if args.audit_command == "export":
-            target = args.out or f"var/exports/agentjudge-{time.strftime('%Y%m%d-%H%M%S')}.zip"
-            path = judge.store.export_bundle(target, policy_snapshot=judge.policy.public())
-            print(f"取证包已导出：{path}（{path.stat().st_size} 字节）")
+            fmt = (getattr(args, "format", None) or "zip").lower()
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            target = args.out or f"var/exports/agentjudge-{stamp}.{fmt if fmt != 'zip' else 'zip'}"
+            if fmt == "csv":
+                path = write_csv(target, judge.store.iter_records())
+            elif fmt in {"html", "htm"}:
+                path = write_html(
+                    target,
+                    judge.store.iter_records(),
+                    verification=judge.verify(),
+                    policy_version=judge.policy.version_label,
+                )
+            elif fmt == "zip":
+                path = judge.store.export_bundle(target, policy_snapshot=judge.policy.public())
+            else:
+                print(f"不支持的导出格式：{fmt}（可选 csv / html / zip）", file=sys.stderr)
+                return 2
+            print(f"已导出：{path}（{path.stat().st_size} 字节）")
             return 0
         return 1
     finally:
@@ -311,8 +333,42 @@ def cmd_eval(args: argparse.Namespace) -> int:
             target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
             target.with_suffix(".md").write_text(report_markdown(report), encoding="utf-8")
             print(f"\n报告已写入：{target} 与 {target.with_suffix('.md')}")
-        ok = report["attacks"]["missed"] == 0
-        return 0 if ok else 1
+
+        exit_code = 0 if report["attacks"]["missed"] == 0 else 1
+
+        if getattr(args, "write_baseline", None):
+            baseline = baseline_from_report(report, tolerance=args.tolerance)
+            path = write_baseline(args.write_baseline, baseline)
+            if not args.json:
+                print(f"\n基线已更新：{path}")
+                print(
+                    f"  ASR {baseline['attacks']['asr']:.1%} · FPR {baseline['benign']['fpr']:.1%}"
+                    f" · 良性完成率 {baseline['benign']['completion']:.1%}"
+                    f" · 误报用例 {len(baseline['benign']['blocked_ids'])} 个"
+                )
+            else:
+                print(json.dumps({"baseline": baseline, "path": str(path)}, ensure_ascii=False, indent=2))
+
+        if getattr(args, "check", False):
+            if not args.baseline:
+                print("--check 需要配合 --baseline <文件> 使用", file=sys.stderr)
+                return 2
+            try:
+                baseline = load_baseline(args.baseline)
+            except (OSError, ValueError) as exc:
+                print(f"读取基线失败：{exc}", file=sys.stderr)
+                return 2
+            regression = compare_report(report, baseline, tolerance=args.tolerance)
+            if args.json:
+                print(json.dumps(regression.to_dict(), ensure_ascii=False, indent=2))
+            else:
+                print(format_result(regression, args.baseline))
+                if not regression.ok:
+                    print("如需接受本次行为变化，请运行：")
+                    print(f"  python run.py eval --write-baseline {args.baseline}")
+            if not regression.ok:
+                exit_code = 1
+        return exit_code
     finally:
         judge.close()
 
@@ -567,7 +623,8 @@ def build_parser() -> argparse.ArgumentParser:
     a_records.add_argument("--kind", default=None)
     _add_common(a_records)
     a_records.set_defaults(func=cmd_audit, audit_command="records")
-    a_export = audit_sub.add_parser("export")
+    a_export = audit_sub.add_parser("export", help="导出 CSV / HTML 台账或 zip 取证包")
+    a_export.add_argument("--format", default="zip", choices=["csv", "html", "zip"])
     a_export.add_argument("--out", default=None)
     _add_common(a_export)
     a_export.set_defaults(func=cmd_audit, audit_command="export")
@@ -575,6 +632,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval = sub.add_parser("eval", help="运行红队场景与良性语料评测")
     p_eval.add_argument("--dataset", default=None)
     p_eval.add_argument("--report", default=None, help="报告输出路径（同时写 .md）")
+    p_eval.add_argument("--baseline", default=None, help="基线文件（配合 --check）")
+    p_eval.add_argument("--check", action="store_true", help="与基线比对，出现回归则退出码 1")
+    p_eval.add_argument("--write-baseline", default=None, help="把本次结果写为基线")
+    p_eval.add_argument("--tolerance", type=float, default=0.02, help="FPR/完成率容差（默认 0.02）")
     _add_common(p_eval)
     p_eval.set_defaults(func=cmd_eval)
 

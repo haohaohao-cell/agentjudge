@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-02T10:10:07.343Z",
+  "policy": "baseline@2026.11.1",
+  "tolerance": 0.02,
+  "attacks": {
+    "total": 15,
+    "intercepted": 15,
+    "asr": 0.0
+  },
+  "benign": {
+    "total": 55,
+    "fpr": 0.0364,
+    "completion": 0.9636,
+    "blocked_ids": [
+      "ben-040",
+      "ben-041"
+    ]
+  },
+  "scenarios": {
+    "scn-01": "pass",
+    "scn-02": "pass",
+    "scn-03": "pass",
+    "scn-04": "pass",
+    "scn-05": "pass",
+    "scn-06": "pass",
+    "scn-07": "pass",
+    "scn-08": "pass",
+    "scn-09": "pass",
+    "scn-10": "pass",
+    "scn-11": "pass",
+    "scn-12": "pass",
+    "scn-13": "pass",
+    "scn-14": "pass",
+    "scn-15": "pass",
+    "scn-16": "pass",
+    "scn-17": "pass"
+  }
+}

@@ -109,9 +109,22 @@ for 期望序号 = 1..N:
 
 ## 6. 取证导出
 
-```bash
-agentjudge audit export --out var/exports/case-2026-11-02.zip
-```
+三种格式，按用途选：
+
+| 格式 | 命令 | 用途 |
+| --- | --- | --- |
+| CSV | `agentjudge audit export --format csv --out ledger.csv` | Excel/表格分析（写 UTF-8 BOM，双击不乱码） |
+| HTML | `agentjudge audit export --format html --out report.html` | 单文件报告，内联样式，可直接发给人看 |
+| ZIP | `agentjudge audit export --format zip` | 取证包，可离线复核完整性 |
+
+CSV 列：序号、时间、类型、动作、工具、会话、风险、摘要、决策号、当前指纹、前序指纹。
+所有字段做标准 CSV 转义。
+
+HTML 报告包含：链校验状态、独立尾锚状态、拒绝/转人工/放行计数、逐条记录表格，
+每条记录可展开查看原始载荷（已 HTML 转义，避免把被监督方的内容当 HTML 执行）。
+
+工作台「事件台账」里同样提供「导出 CSV / 导出 HTML」按钮，会带上当前的类型与会话过滤条件；
+HTTP 接口是 `GET /api/v1/audit/export?format=csv|html|zip&kind=&session=`。
 
 zip 内含：
 

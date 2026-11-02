@@ -27,7 +27,7 @@
 | GET | `/audit/verify` | 校验审计链 |
 | POST | `/audit/seal` | 立即封存尾锚 |
 | GET | `/audit/records?limit=&offset=&session=&kind=` | 审计记录 |
-| GET | `/audit/export` | 下载取证包（zip） |
+| GET | `/audit/export?format=csv\|html\|zip&kind=&session=` | 下载台账或取证包（`Content-Disposition: attachment`） |
 | POST | `/skills/inspect` | 技能体检（可 `write_contract`） |
 | GET | `/datasets` | 数据集概览 |
 | POST | `/eval` | 跑全量评测 |
@@ -120,7 +120,7 @@ data: {"type":"decision","session_id":"s1","action":"deny","risk":100,"tool":"sh
 
 | 状态码 | 场景 |
 | --- | --- |
-| 400 | JSON 非法 / 缺字段 |
+| 400 | JSON 非法 / 缺字段 / 不支持的导出格式 |
 | 401 | Token 缺失或错误 |
 | 404 | 路由、会话或决策不存在 |
 | 413 | 请求体超过 2 MB |

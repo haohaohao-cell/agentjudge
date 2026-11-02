@@ -48,8 +48,15 @@ jobs:
           python -m agentjudge rules test "rm -rf ~"
           python -m agentjudge audit verify
 
-      - name: Scenario & corpus evaluation
-        run: python -m agentjudge eval --report var/reports/eval.json
+      - name: Scenario, corpus and regression guard
+        run: |
+          python -m agentjudge eval --report var/reports/eval.json \
+            --baseline datasets/baseline.json --check
+
+      - name: Ledger export smoke test
+        run: |
+          python -m agentjudge audit export --format csv --out var/reports/ledger.csv
+          python -m agentjudge audit export --format html --out var/reports/ledger.html
 
       - name: Audit chain verification
         run: python -m agentjudge audit verify
@@ -62,6 +69,8 @@ jobs:
           path: |
             var/reports/eval.json
             var/reports/eval.md
+            var/reports/ledger.csv
+            var/reports/ledger.html
           retention-days: 14
 
   skill-check:

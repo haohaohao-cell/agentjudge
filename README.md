@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-143%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-173%20passed-brightgreen)](tests/)
 
 > 徽章与链接按 `haohaohao-cell/agentjudge` 预置；若仓库名不同，全局替换即可。首次推送并跑通 CI 后徽章自动生效。
 
@@ -39,7 +39,7 @@ AgentJudge 把审计单元从单次调用扩展到**整个会话的数据流**�
 - **五道确定性守卫**：蜜标令牌、隐写扫描、规则引擎、工具/技能合约、跨步骤数据流。命中即拒绝，全部可解释。
 - **技能「言行体检」**：上架前把文档声称的能力与代码实测行为逐维对照，生成可机读合约；运行时按声明能力收紧（`trusted` / `conditional` / `quarantined`）。
 - **防篡改审计链**：HMAC-SHA256 链 + 数据库外独立尾锚，改一条记录即断链，删尾/清空/换尾都能被检出。
-- **告警与台账**：拦截/转人工/隔离即时推送到飞书、企业微信、钉钉、Slack、Webhook 或 SMTP 邮件；工作台内置跨会话「统一事件台账」。
+- **告警与台账**：拦截/转人工/隔离即时推送到飞书、企业微信、钉钉、Slack、Webhook 或 SMTP 邮件；工作台内置跨会话「统一事件台账」，可导出 CSV / 自包含 HTML。
 - **零运行时依赖**：纯 Python 标准库实现（配置用 TOML），可离线、可内网、无 GPU、无外部服务。
 - **旁路接入**：SDK 装饰器、HTTP API、MCP 代理、OpenClaw pointer 插件四种接法，不改被监督方核心逻辑。
 - **实时工作台**：会话时间线、数据流边、规则命中证据、人工复核队列、审计链校验、技能体检，全部在一个页面里。
@@ -86,7 +86,7 @@ agentjudge doctor
 | 良性任务完成率 | 96.4% |
 | 误报率 FPR | 3.6%（2 / 55，均为灰区运维操作） |
 | 裁决延迟 | p50 **0.48 ms** / p95 **0.80 ms** |
-| 单元测试 | 143 个，全部通过 |
+| 单元测试 | 173 个，全部通过 |
 
 > 数据来自自建语料，不代表第三方评测结论；复现方式与口径见 [`docs/evaluation.md`](docs/evaluation.md)。
 > 延迟为确定性路径（无 LLM 调用）在普通笔记本上的实测值。
@@ -233,8 +233,12 @@ python run.py skill inspect examples/skills/note-taker
 ```bash
 python run.py audit verify     # 校验
 python run.py audit seal       # 立即封存尾锚
-python run.py audit export     # 导出取证包（zip）
+python run.py audit export --format csv  --out var/reports/ledger.csv   # 台账（Excel 可直接开）
+python run.py audit export --format html --out var/reports/ledger.html  # 自包含 HTML 报告
+python run.py audit export --format zip                                 # 取证包（记录+尾锚+策略快照）
 ```
+
+工作台的「事件台账」里也有「导出 CSV / 导出 HTML」按钮，可按类型与会话过滤后导出。
 
 ---
 
@@ -298,6 +302,23 @@ python run.py eval --report var/reports/eval.json
 
 `{{canary}}` 由评测器替换成该会话的真实蜜标，因此场景可复现且不可预测。
 
+### 策略回归守护
+
+改规则最怕“修好一个、弄坏一片”。仓库里固化了基线 `datasets/baseline.json`：
+
+```bash
+python run.py eval --baseline datasets/baseline.json --check   # CI 每次跑
+```
+
+出现以下情况直接红灯（退出码 1）：攻击场景由通过变失败、ASR 上升、新增误报用例、
+FPR 超出「基线 + 容差」、良性完成率跌破容差。确认是有意变更后再更新基线：
+
+```bash
+python run.py eval --write-baseline datasets/baseline.json
+```
+
+CI 里评测、回归检查、CSV/HTML 导出、审计链校验会在同一轮跑完。
+
 ---
 
 ## 部署
@@ -336,7 +357,7 @@ agentjudge/
 ├── policies/               # 策略、监控模式
 ├── contracts/              # 工具合约、技能合约
 ├── datasets/               # 17 个红队场景 + 55 条良性语料
-├── tests/                  # 143 个测试
+├── tests/                  # 173 个测试
 ├── docs/                   # 架构、威胁模型、策略手册、API、部署、评测
 └── deploy/                 # Dockerfile、compose、systemd
 ```

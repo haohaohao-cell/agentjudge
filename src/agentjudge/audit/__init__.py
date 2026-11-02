@@ -11,6 +11,13 @@ from .chain import (
     read_anchor,
     write_anchor,
 )
+from .exporters import (
+    record_summary,
+    records_to_csv,
+    records_to_html,
+    write_csv,
+    write_html,
+)
 from .store import AuditStore
 
 __all__ = [
@@ -22,4 +29,9 @@ __all__ = [
     "VerifyResult",
     "read_anchor",
     "write_anchor",
+    "record_summary",
+    "records_to_csv",
+    "records_to_html",
+    "write_csv",
+    "write_html",
 ]

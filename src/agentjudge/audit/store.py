@@ -201,6 +201,31 @@ class AuditStore:
                     break
                 yield _row_to_record(row)
 
+    def iter_filtered(
+        self,
+        *,
+        session_id: str | None = None,
+        kind: str | None = None,
+        ascending: bool = True,
+    ) -> Iterator[ChainRecord]:
+        """按会话/类型过滤后逐条遍历（导出用，不受 limit 限制）。"""
+        sql = "SELECT * FROM audit_records WHERE 1=1"
+        params: list[Any] = []
+        if session_id:
+            sql += " AND session_id=?"
+            params.append(session_id)
+        if kind:
+            sql += " AND kind=?"
+            params.append(kind)
+        sql += f" ORDER BY seq {'ASC' if ascending else 'DESC'}"
+        with self._lock:
+            cursor = self._conn.execute(sql, params)
+            while True:
+                row = cursor.fetchone()
+                if row is None:
+                    break
+                yield _row_to_record(row)
+
     def session_records(self, session_id: str, limit: int = 500) -> list[ChainRecord]:
         return self.records(session_id=session_id, limit=limit, descending=False)
 

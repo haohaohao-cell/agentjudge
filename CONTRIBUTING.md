@@ -35,9 +35,16 @@ PYTHONPATH=src python -m agentjudge serve    # 工作台
 ## 提 PR 前
 
 1. 加测试：守卫/链/引擎逻辑改动必须有对应用例；
-2. 跑 `python -m unittest discover -s tests -v` 与 `python -m agentjudge eval`；
-3. FPR 明显上升需要在 PR 里说明原因与取舍；
+2. 跑 `python -m unittest discover -s tests -v` 与
+   `python -m agentjudge eval --baseline datasets/baseline.json --check`；
+3. **行为变化要显式更新基线**：如果确实要新增拦截、调整阈值或改场景，运行
+   `python -m agentjudge eval --write-baseline datasets/baseline.json`，
+   并在 PR 里说明 `datasets/baseline.json` 的 diff 为什么合理；
 4. 更新文档（README / docs/*）。
+
+> CI 会在 `--check` 失败时红灯，常见原因：新规则误伤了良性语料（新增 `blocked_ids`）、
+> 某个红队场景从通过变失败、ASR 上升。不要直接改基线来"骗过"CI——先看 diff 里
+> 多出来的是不是你想拦的。
 
 ## 新增红队场景
 

@@ -617,8 +617,24 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _ensure_utf8_stdio() -> None:
+    """把标准输出/错误切到 UTF-8。
+
+    Windows 控制台与 CI（cp1252 / cp936）默认编码无法输出中文，
+    显式 reconfigure 后 `agentjudge doctor` 等命令才不会崩。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            encoding = (getattr(stream, "encoding", "") or "").lower().replace("-", "")
+            if encoding not in {"utf8", "cp65001"}:
+                stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except (AttributeError, OSError, ValueError):  # pragma: no cover - 非常规流
+            pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     global CONSOLE
+    _ensure_utf8_stdio()
     parser = build_parser()
     args = parser.parse_args(argv)
     if getattr(args, "no_color", False):

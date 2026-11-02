@@ -37,6 +37,8 @@ audit from a single call to the **session-level data flow**.
   (`trusted` / `conditional` / `quarantined`).
 - **Tamper-evident audit chain** — HMAC-SHA256 hash chain plus an out-of-database tail anchor.
   Modify, delete, truncate or replace records and verification fails with the exact break point.
+- **Alerts and ledger** — denies, escalations and quarantines are pushed to Feishu, WeCom,
+  DingTalk, Slack, generic webhooks or SMTP email; the workbench ships a cross-session event ledger.
 - **Zero runtime dependencies** — pure Python standard library (TOML config). Offline,
   air-gapped, no GPU, no external service.
 - **Sidecar integration** — SDK decorator, HTTP API, MCP proxy, OpenClaw pointer plugin.
@@ -91,6 +93,7 @@ Self-built corpus; reproduce with `agentjudge eval`. See [docs/evaluation.md](do
 | [docs/skill-contract.md](docs/skill-contract.md) | Say-vs-do scoring and contract generation |
 | [docs/api.md](docs/api.md) | HTTP API and SSE events |
 | [docs/deployment.md](docs/deployment.md) | Docker, systemd, key management, upgrades |
+| [docs/alerting.md](docs/alerting.md) | Feishu/WeCom/DingTalk/Slack/email alerting |
 | [docs/evaluation.md](docs/evaluation.md) | Metrics, datasets, how to add scenarios |
 | [docs/roadmap.md](docs/roadmap.md) | Roadmap |
 

@@ -3,6 +3,24 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 新增
+
+- **告警**：飞书 / 企业微信 / 钉钉 / Slack / 通用 Webhook + SMTP 邮件；
+  独立线程 + 有界队列 + 令牌桶限流，失败不影响裁决（`src/agentjudge/alerting.py`）。
+- **统一事件台账**：工作台跨会话检索审计记录（按类型/会话过滤，点击跳到时间线）。
+- **`agentjudge alert test`**：告警通道自检，退出码区分「全部成功 / 有失败 / 未配置」。
+- **测试**：告警 22 个、LLM 真实 HTTP 路径 8 个、CLI 端到端 10 个，
+  测试总数 98 → 139。
+
+### 变更
+
+- CLI `--json` 输出统一为 `{allow, action, reason, decision}` 信封，与 HTTP API 对齐。
+- `agentjudge skill inspect --json` 在非 trusted 时返回退出码 2（此前恒为 0）。
+- 修正文档中「重启后污点上下文完整恢复」的表述：审计只存脱敏预览，
+  跨重启的数据流判定为尽力恢复。
+
 ## [0.1.0] - 2026-11-02
 
 ### 新增

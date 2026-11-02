@@ -234,6 +234,11 @@ function renderMetrics(stats) {
     ['审计记录', (stats.store && stats.store.records) || 0, '条'],
     ['语义研判', (metrics.watcher && metrics.watcher.calls) || 0, '次'],
   ];
+  const alerting = stats.alerting || {};
+  if (alerting.enabled) {
+    const channels = (alerting.channels || []).length;
+    cards.push(['告警投递', alerting.sent ?? 0, `${channels} 通道`]);
+  }
   $('metrics').innerHTML = cards
     .map(
       ([key, value, unit]) =>
@@ -478,6 +483,83 @@ function connectEvents() {
   };
 }
 
+/* ---------------- 统一事件台账 ---------------- */
+function recordSummary(record) {
+  const p = record.payload || {};
+  if (record.kind === 'decision') {
+    const d = p.decision || {};
+    const ids = (d.reasons || []).map((r) => r.rule_id).join(', ');
+    return d.explanation || ids || '—';
+  }
+  if (record.kind === 'result') {
+    const labels = (p.labels || []).join(', ');
+    return `返回值 ${p.chars || 0} 字符${labels ? ' · ' + labels : ''}`;
+  }
+  if (record.kind === 'flow_edge') {
+    return `数据流边 ${(p.edges || []).length} 条：` + (p.edges || []).map((e) => `#${e.source_step}→${e.source_tool}`).join(' ');
+  }
+  if (record.kind === 'revise') return `读取即隔离：${p.reason || ''}`;
+  if (record.kind === 'review') return `${p.review_status || ''} · ${p.reviewer || ''} ${p.note || ''}`;
+  return JSON.stringify(p).slice(0, 120);
+}
+
+async function loadLedger() {
+  const kind = $('ledger-kind').value;
+  const session = $('ledger-session').value.trim();
+  const params = new URLSearchParams({ limit: '150' });
+  if (kind) params.set('kind', kind);
+  if (session) params.set('session', session);
+  const body = $('ledger-body');
+  body.innerHTML = '<tr><td colspan="7" class="summary">加载中…</td></tr>';
+  try {
+    const data = await api(`/api/v1/audit/records?${params.toString()}`);
+    const records = data.records || [];
+    if (!records.length) {
+      body.innerHTML = '<tr><td colspan="7" class="summary">没有匹配的记录</td></tr>';
+      $('ledger-meta').textContent = '0 条记录';
+      return;
+    }
+    body.innerHTML = records
+      .map((r) => {
+        const action = (r.action || '').toLowerCase();
+        const badge = action
+          ? `<span class="act ${esc(action)}">${esc(action.toUpperCase())}</span>`
+          : '<span class="act none">—</span>';
+        return `<tr data-session="${esc(r.session_id || '')}">
+          <td class="seq">${r.seq}</td>
+          <td class="time">${esc((r.ts || '').slice(11, 19))}</td>
+          <td class="kind">${esc(r.kind)}</td>
+          <td>${badge}</td>
+          <td class="tool">${esc(r.tool || '—')}</td>
+          <td class="session" title="${esc(r.session_id || '')}">${esc(r.session_id || '—')}</td>
+          <td class="summary">${esc(recordSummary(r))}</td>
+        </tr>`;
+      })
+      .join('');
+    body.querySelectorAll('tr[data-session]').forEach((row) => {
+      row.addEventListener('click', () => {
+        const sid = row.dataset.session;
+        if (!sid) return;
+        closeLedger();
+        selectSession(sid);
+      });
+    });
+    $('ledger-meta').textContent = `最近 ${records.length} 条 · 点击任意行跳转到对应会话时间线`;
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7" class="summary">加载失败：${esc(err.message)}</td></tr>`;
+  }
+}
+
+function openLedger() {
+  const overlay = $('ledger');
+  overlay.classList.remove('hidden');
+  loadLedger();
+}
+
+function closeLedger() {
+  $('ledger').classList.add('hidden');
+}
+
 /* ---------------- 启动 ---------------- */
 async function boot() {
   $('btn-verify').addEventListener('click', verifyChain);
@@ -485,6 +567,19 @@ async function boot() {
   $('btn-demo').addEventListener('click', runDemo);
   $('btn-eval').addEventListener('click', runEval);
   $('btn-skill').addEventListener('click', inspectSkill);
+  $('btn-ledger').addEventListener('click', openLedger);
+  $('btn-ledger-close').addEventListener('click', closeLedger);
+  $('btn-ledger-refresh').addEventListener('click', loadLedger);
+  $('ledger-kind').addEventListener('change', loadLedger);
+  $('ledger-session').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') loadLedger();
+  });
+  $('ledger').addEventListener('click', (event) => {
+    if (event.target === $('ledger')) closeLedger();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !$('ledger').classList.contains('hidden')) closeLedger();
+  });
   $('only-risky').checked = localStorage.getItem('aj_only_risky') === '1';
   $('only-risky').addEventListener('change', (event) => {
     localStorage.setItem('aj_only_risky', event.target.checked ? '1' : '0');
@@ -501,8 +596,13 @@ async function boot() {
   await loadMetrics();
   await loadPending();
   // ?nolive=1 用于无头截图/离线演示：不建立 SSE 长连接
-  if (!new URLSearchParams(location.search).has('nolive')) {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('nolive')) {
     connectEvents();
+  }
+  // ?ledger=1 直接打开统一事件台账（可分享的深链）
+  if (params.has('ledger')) {
+    openLedger();
   }
   setInterval(loadHealth, 30000);
 }

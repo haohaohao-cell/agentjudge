@@ -12,8 +12,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .alerting import AlertConfig
 from .errors import PolicyError
 from .types import Action, Severity
+from .utils import read_text_utf8
 from .version import POLICY_SCHEMA_VERSION
 
 DEFAULT_TARGETS = ["command", "path", "url", "arg.*", "content"]
@@ -167,6 +169,7 @@ class Policy:
     network: NetworkConfig = field(default_factory=NetworkConfig)
     watcher: WatcherConfig = field(default_factory=WatcherConfig)
     audit: AuditConfig = field(default_factory=AuditConfig)
+    alerting: AlertConfig = field(default_factory=AlertConfig)
     guards: dict[str, GuardConfig] = field(default_factory=dict)
     rules: list[RuleConfig] = field(default_factory=list)
     source_path: str = "<builtin>"
@@ -242,6 +245,24 @@ class Policy:
             key_id=str(audit.get("key_id", adefault.key_id)),
             seal_interval_s=int(audit.get("seal_interval_s", adefault.seal_interval_s)),
             max_payload_chars=int(audit.get("max_payload_chars", adefault.max_payload_chars)),
+        )
+
+        alert = data.get("alerting", {}) or {}
+        adefaults = AlertConfig()
+        raw_hooks = alert.get("webhooks", []) or []
+        if isinstance(raw_hooks, dict):
+            raw_hooks = [{"type": k, **v} for k, v in raw_hooks.items()]
+        self.alerting = AlertConfig(
+            enabled=bool(alert.get("enabled", adefaults.enabled)),
+            min_severity=str(alert.get("min_severity", adefaults.min_severity)),
+            on_deny=bool(alert.get("on_deny", adefaults.on_deny)),
+            on_escalate=bool(alert.get("on_escalate", adefaults.on_escalate)),
+            on_quarantine=bool(alert.get("on_quarantine", adefaults.on_quarantine)),
+            rate_limit_per_min=int(alert.get("rate_limit_per_min", adefaults.rate_limit_per_min)),
+            timeout_s=float(alert.get("timeout_s", adefaults.timeout_s)),
+            console=bool(alert.get("console", adefaults.console)),
+            webhooks=[dict(item) for item in raw_hooks],
+            email=dict(alert.get("email", {}) or {}),
         )
 
         guards: dict[str, GuardConfig] = {}
@@ -328,6 +349,7 @@ class Policy:
             "thresholds": self.thresholds,
             "network": self.network.to_dict(),
             "watcher": self.watcher.to_dict(),
+            "alerting": self.alerting.to_dict(),
             "guards": {k: v.to_dict() for k, v in self.guards.items()},
             "rules": [r.to_dict() for r in self.rules],
             "rule_count": len(self.rules),
@@ -343,8 +365,7 @@ def _load_with_extends(path: Path, seen: set[str]) -> dict[str, Any]:
         raise PolicyError(f"策略继承出现循环引用: {path}")
     seen.add(key)
     try:
-        with path.open("rb") as fh:
-            data = tomllib.load(fh)
+        data = tomllib.loads(read_text_utf8(path))
     except tomllib.TOMLDecodeError as exc:
         raise PolicyError(f"策略 TOML 解析失败 {path}: {exc}") from exc
     base_name = data.pop("extend", None)

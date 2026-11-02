@@ -114,11 +114,16 @@ sequenceDiagram
   参考 `adapters/openclaw.py`。
 - **策略继承**：`extend = "default.toml"` + 覆盖字段，便于按业务线维护差异。
 - **合约生成**：`agentjudge skill inspect --write-contract` 产出可版本化的技能合约。
+- **告警通道**：实现 `Notifier.send(event) -> bool` 并注入 `AlertManager`，
+  即可接入内部 IM/工单系统；参考 `alerting.py`。
 
 ## 6. 并发与持久化
 
 - `AuditStore` 用 `BEGIN IMMEDIATE` 串行化写入，跨进程也不会出现序号冲突；
   读与校验可并发。
 - 会话表在内存中，启动时由 `Judge.hydrate()` 从审计链回放重建，
-  因此重启后工作台仍能看到历史、污点上下文也能延续。
+  因此重启后工作台仍能看到历史与裁决；但审计只保存返回值预览（脱敏），
+  污点标签与数据流边**只能尽力恢复**，跨重启的跨步骤判定不保证等价。
+- 告警是独立守护线程 + 有界队列（256）+ 令牌桶限流，`intercept()` 从不等待网络；
+  进程退出时最多等待 2 秒在途告警。
 - SQLite 开启 WAL + `synchronous=FULL`：审计写入优先保证不丢，其次才是吞吐。

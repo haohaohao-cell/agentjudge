@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..utils import canonical_json, utc_now_iso
+from ..utils import canonical_json, read_text_utf8, utc_now_iso
 from .behavior import Evidence, scan_directory
 from .claims import (
     CAPABILITIES,
@@ -282,11 +282,10 @@ def _read_manifest(root: Path) -> dict[str, Any]:
         if candidate.name in MANIFEST_NAMES:
             try:
                 if candidate.suffix == ".json":
-                    return json.loads(candidate.read_text(encoding="utf-8"))
+                    return json.loads(read_text_utf8(candidate))
                 import tomllib
 
-                with candidate.open("rb") as fh:
-                    return tomllib.load(fh)
+                return tomllib.loads(read_text_utf8(candidate))
             except (OSError, ValueError):
                 return {}
     return {}

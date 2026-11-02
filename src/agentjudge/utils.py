@@ -11,6 +11,7 @@ import re
 import time
 import unicodedata
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -21,6 +22,14 @@ _SECRET_PATTERNS = (
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"),
 )
+
+
+def read_text_utf8(path: str | Path) -> str:
+    """读取 UTF-8 文本，自动去掉 Windows 编辑器可能写入的 BOM。"""
+    data = Path(path).read_bytes()
+    if data.startswith(b"\xef\xbb\xbf"):
+        data = data[3:]
+    return data.decode("utf-8")
 
 
 def utc_now_iso(ts: float | None = None) -> str:

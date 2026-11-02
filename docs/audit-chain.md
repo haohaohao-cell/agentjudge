@@ -35,6 +35,16 @@ JSON 化（超长字符串截断到 20k 字符，保证可解析）。
 
 审计里**不存明文密钥**：参数经 `mask_secrets` 脱敏，原文只留 `sha256` 指纹。
 
+### 统一事件台账
+
+工作台右上角「事件台账」把全部记录按时间倒序汇总，可按类型（裁决/返回值/数据流边/
+隔离/复核）与会话过滤，点击任意一行跳到对应会话的时间线。深链：`/?ledger=1`。
+
+![统一事件台账](ledger.png)
+
+API 对应 `GET /api/v1/audit/records?limit=150&kind=decision&session=...`；
+命令行对应 `agentjudge audit records --limit 50 --kind review`。
+
 ## 3. 尾状态与独立尾锚
 
 数据库内 `chain_tail` 表保存 `chain_tail`、`tail_count`、`hmac_tail`。

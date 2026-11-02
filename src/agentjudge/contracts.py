@@ -22,6 +22,7 @@ from typing import Any
 
 from .errors import ContractError
 from .taxonomy import normalize_path
+from .utils import read_text_utf8
 
 TRUST_STATES = {"trusted", "conditional", "quarantined", "unknown"}
 
@@ -165,8 +166,7 @@ class ContractBook:
     @staticmethod
     def _load_file(path: Path) -> Contract:
         try:
-            with path.open("rb") as fh:
-                data = tomllib.load(fh)
+            data = tomllib.loads(read_text_utf8(path))
         except (OSError, tomllib.TOMLDecodeError) as exc:
             raise ContractError(f"合约解析失败 {path}: {exc}") from exc
         return Contract.from_mapping(data, source=str(path))

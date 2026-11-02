@@ -22,6 +22,7 @@
       <span class="chip live" id="chip-live"><i></i>实时</span>
     </div>
     <div class="actions">
+      <button id="btn-ledger" class="btn">事件台账</button>
       <button id="btn-demo" class="btn primary">运行演示</button>
       <button id="btn-eval" class="btn">跑评测</button>
     </div>
@@ -89,6 +90,34 @@
     <span id="ticker">等待事件…</span>
     <span class="muted" id="footer-right"></span>
   </footer>
+
+  <div id="ledger" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ledger-title">
+    <div class="overlay-panel">
+      <div class="overlay-head">
+        <h2 id="ledger-title">统一事件台账</h2>
+        <select id="ledger-kind">
+          <option value="">全部类型</option>
+          <option value="decision">裁决</option>
+          <option value="result">返回值</option>
+          <option value="flow_edge">数据流边</option>
+          <option value="revise">隔离</option>
+          <option value="review">人工复核</option>
+        </select>
+        <input id="ledger-session" placeholder="按会话过滤（session id）" spellcheck="false">
+        <button class="btn small" id="btn-ledger-refresh">刷新</button>
+        <button class="btn small ghost" id="btn-ledger-close">关闭</button>
+      </div>
+      <div class="overlay-body">
+        <table class="ledger">
+          <thead>
+            <tr><th>#</th><th>时间</th><th>类型</th><th>动作</th><th>工具</th><th>会话</th><th>摘要</th></tr>
+          </thead>
+          <tbody id="ledger-body"></tbody>
+        </table>
+      </div>
+      <div class="overlay-foot" id="ledger-meta">—</div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

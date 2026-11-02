@@ -99,6 +99,37 @@ key_id = "k1"
 seal_interval_s = 300
 ```
 
+## 5.5 告警
+
+```toml
+[alerting]
+enabled = false
+min_severity = "high"        # 只告警 high / critical
+on_deny = true
+on_escalate = true
+on_quarantine = true
+rate_limit_per_min = 30
+timeout_s = 5.0
+console = false
+
+[[alerting.webhooks]]
+type = "feishu"              # feishu | wecom | dingtalk | slack | generic
+url_env = "AGENTJUDGE_FEISHU_WEBHOOK"
+
+[alerting.email]
+enabled = false
+host = "smtp.example.com"
+port = 587
+starttls = true
+username = "judge@example.com"
+password_env = "AGENTJUDGE_SMTP_PASSWORD"
+sender = "judge@example.com"
+recipients = ["sec@example.com"]
+```
+
+告警走独立线程 + 有界队列 + 令牌桶限流，**永不阻断裁决**；`url_env`/`password_env`
+让密钥不落仓库。详见 [alerting.md](alerting.md)。
+
 ## 6. 规则
 
 ```toml

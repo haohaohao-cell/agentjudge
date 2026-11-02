@@ -6,11 +6,14 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .alerting import AlertManager, build_alerting
 from .audit import AuditStore, ChainRecord, Keyring
 from .contracts import ContractBook
 from .errors import EscalationRequired, ResultQuarantined, ToolCallDenied
@@ -69,6 +72,7 @@ class Judge:
         contracts: ContractBook | None = None,
         watcher: Watcher | None = None,
         pipeline: list[Guard] | None = None,
+        alerts: AlertManager | None = None,
     ) -> None:
         self.policy = policy
         self.sessions = sessions or SessionStore()
@@ -77,6 +81,7 @@ class Judge:
         self.watcher = watcher if watcher is not None else build_watcher(policy)
         self.pipeline = pipeline or default_pipeline()
         self.metrics = Metrics()
+        self.alerts = alerts if alerts is not None else build_alerting(policy.alerting)
         self._calls: dict[str, ToolCall] = {}
         self._calls_lock = __import__("threading").RLock()
         self._closed = False
@@ -180,7 +185,17 @@ class Judge:
         self._register_side_effects(session, call, decision)
         self._remember_call(call)
         self.metrics.record(decision)
+        self._notify(decision)
         return decision
+
+    def _notify(self, decision: Decision) -> None:
+        """投递告警；任何异常都不允许影响裁决结果。"""
+        try:
+            self.alerts.submit(decision)
+        except Exception as exc:  # noqa: BLE001 - 告警是旁路，永不阻断
+            self._alert_errors = getattr(self, "_alert_errors", 0) + 1
+            if os.environ.get("AGENTJUDGE_DEBUG"):
+                print(f"[alerting] submit failed: {exc}", file=sys.stderr)
 
     def _run_pipeline(self, ctx: GuardContext) -> tuple[list[Finding], list[GuardRun]]:
         findings: list[Finding] = []
@@ -449,10 +464,22 @@ class Judge:
             "mode": self.policy.mode,
             "watcher": self.watcher.provider,
             "contracts": len(self.contracts),
+            "alerting": {
+                "enabled": self.policy.alerting.enabled,
+                "channels": self.alerts.describe(),
+                "sent": self.alerts.sent,
+                "failed": self.alerts.failed,
+                "dropped": self.alerts.dropped,
+                "errors": getattr(self, "_alert_errors", 0),
+            },
         }
 
     def hydrate(self, limit: int = 1000) -> int:
-        """从审计链回放会话，使服务重启后仍能看到历史并继续污点追踪。"""
+        """从审计链回放会话（历史时间线与裁决可恢复）。
+
+        注意：审计里只保存返回值预览（脱敏），因此污点标签不会完整重建，
+        跨重启的数据流判定按“尽力恢复”处理。
+        """
         records = self.store.records(limit=limit, kind="decision", descending=True)
         payloads = [r.to_dict() for r in reversed(records)]
         return self.sessions.hydrate_from_records(payloads)
@@ -461,6 +488,10 @@ class Judge:
         if self._closed:
             return
         self._closed = True
+        try:
+            self.alerts.close()
+        except Exception:  # noqa: BLE001
+            pass
         try:
             self.store.close()
         except Exception:  # noqa: BLE001 - 关闭阶段不再抛错

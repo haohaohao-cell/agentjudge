@@ -60,6 +60,36 @@ key_id = "k1"
 seal_interval_s = 300
 
 # -----------------------------------------------------------------------------
+# 告警：飞书 / 企业微信 / 钉钉 / Slack / 通用 Webhook + SMTP 邮件
+# 告警是旁路：不阻断裁决、不阻塞主流程，失败只记日志。
+# -----------------------------------------------------------------------------
+[alerting]
+enabled = false
+min_severity = "high"        # 只告警 high / critical
+on_deny = true
+on_escalate = true
+on_quarantine = true
+rate_limit_per_min = 30      # 防止批量攻击刷爆接收端
+timeout_s = 5.0
+console = false              # true 时同时打印到 stdout（调试用）
+
+# 启用示例：地址放环境变量，避免把 Webhook 写进仓库
+# [[alerting.webhooks]]
+# type = "feishu"            # feishu | wecom | dingtalk | slack | generic
+# url_env = "AGENTJUDGE_FEISHU_WEBHOOK"
+
+# 邮件告警（内网 SMTP 即可）
+# [alerting.email]
+# enabled = false
+# host = "smtp.example.com"
+# port = 587
+# starttls = true
+# username = "judge@example.com"
+# password_env = "AGENTJUDGE_SMTP_PASSWORD"
+# sender = "judge@example.com"
+# recipients = ["sec@example.com"]
+
+# -----------------------------------------------------------------------------
 # 守卫开关与参数
 # -----------------------------------------------------------------------------
 [guards.canary]

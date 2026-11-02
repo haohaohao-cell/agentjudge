@@ -39,6 +39,7 @@ AgentJudge 把审计单元从单次调用扩展到**整个会话的数据流**�
 - **五道确定性守卫**：蜜标令牌、隐写扫描、规则引擎、工具/技能合约、跨步骤数据流。命中即拒绝，全部可解释。
 - **技能「言行体检」**：上架前把文档声称的能力与代码实测行为逐维对照，生成可机读合约；运行时按声明能力收紧（`trusted` / `conditional` / `quarantined`）。
 - **防篡改审计链**：HMAC-SHA256 链 + 数据库外独立尾锚，改一条记录即断链，删尾/清空/换尾都能被检出。
+- **告警与台账**：拦截/转人工/隔离即时推送到飞书、企业微信、钉钉、Slack、Webhook 或 SMTP 邮件；工作台内置跨会话「统一事件台账」。
 - **零运行时依赖**：纯 Python 标准库实现（配置用 TOML），可离线、可内网、无 GPU、无外部服务。
 - **旁路接入**：SDK 装饰器、HTTP API、MCP 代理、OpenClaw pointer 插件四种接法，不改被监督方核心逻辑。
 - **实时工作台**：会话时间线、数据流边、规则命中证据、人工复核队列、审计链校验、技能体检，全部在一个页面里。
@@ -350,6 +351,7 @@ agentjudge/
 | [docs/threat-model.md](docs/threat-model.md) | 防护目标、信任边界、攻击面与已知局限 |
 | [docs/policy-reference.md](docs/policy-reference.md) | 策略字段、规则写法、合约字段速查 |
 | [docs/audit-chain.md](docs/audit-chain.md) | HMAC 链构造、尾锚、校验与取证流程 |
+| [docs/alerting.md](docs/alerting.md) | 飞书/企业微信/钉钉/Slack/邮件告警与限流 |
 | [docs/skill-contract.md](docs/skill-contract.md) | 言行体检的判定口径与合约生成 |
 | [docs/api.md](docs/api.md) | HTTP API 与 SSE 事件 |
 | [docs/deployment.md](docs/deployment.md) | 内网/离线部署、密钥管理、升级 |

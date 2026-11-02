@@ -5,6 +5,7 @@
     agentjudge eval                  # 跑红队场景与良性语料
     agentjudge audit verify          # 校验防篡改审计链
     agentjudge skill inspect <dir>   # 技能“言行”体检
+    agentjudge alert test            # 告警通道自检
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import time
 from pathlib import Path
 from typing import Any, Sequence
 
+from .alerting import AlertEvent, build_alerting
 from .audit import AuditStore, Keyring
 from .contracts import ContractBook
 from .evaluation import load_corpus, load_scenarios, report_markdown, run_evaluation
@@ -133,7 +135,19 @@ def build_judge(args: argparse.Namespace, *, watcher_client: Any = None) -> Judg
 
 def _print_decision(decision: Any, as_json: bool) -> None:
     if as_json:
-        print(json.dumps(decision.to_dict(), ensure_ascii=False, indent=2))
+        # 与 HTTP API 保持同一信封，便于脚本/CI 复用
+        print(
+            json.dumps(
+                {
+                    "allow": decision.effective_action is Action.ALLOW,
+                    "action": decision.effective_action.value,
+                    "reason": decision.explanation,
+                    "decision": decision.to_dict(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return
     c = CONSOLE
     print(f"\n{c.bold('裁决')} {c.action(decision.action.value)}  "
@@ -311,7 +325,7 @@ def cmd_skill(args: argparse.Namespace) -> int:
         print(f"技能合约已写入：{target}")
     if args.json:
         print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
-        return 0
+        return 0 if report.trust == "trusted" else 2
     c = CONSOLE
     trust_color = {"trusted": c.green, "conditional": c.yellow, "quarantined": c.red}.get(report.trust, str)
     print(f"\n{c.bold('技能体检')} {report.name} {c.dim(report.version)}")
@@ -424,9 +438,61 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     print(f"  HMAC 密钥   {'环境变量' if key_env else policy.resolve(policy.audit.key_file)}")
     llm_key = os.environ.get(policy.watcher.api_key_env)
     print(f"  语义研判    {policy.watcher.provider}（{'已配置密钥' if llm_key else '离线启发式'}）")
+    alerting = policy.alerting
+    channels = len([w for w in alerting.webhooks if w.get("url") or w.get("url_env")]) + int(
+        bool((alerting.email or {}).get("enabled"))
+    )
+    alert_state = "已启用" if alerting.enabled else "未启用"
+    print(f"  告警        {alert_state}（{channels} 个通道，阈值 {alerting.min_severity}）")
     datasets = _find_datasets()
     print(f"  评测数据    {datasets or c.yellow('未找到 datasets/ 目录')}")
     return 0
+
+
+def cmd_alert(args: argparse.Namespace) -> int:
+    """告警通道自检：不需要打开审计库，直接按策略配置发一条测试事件。"""
+    policy = Policy.load(args.policy)
+    manager = build_alerting(policy.alerting)
+    channels = manager.describe()
+    if args.json:
+        print(json.dumps({"enabled": policy.alerting.enabled, "channels": channels}, ensure_ascii=False, indent=2))
+    else:
+        print(f"\n{CONSOLE.bold('告警通道')}  {len(channels)} 个")
+        for channel in channels:
+            print(f"  - {channel}")
+        if not channels:
+            print(CONSOLE.yellow("  未配置任何通道：在策略的 [alerting] 段添加 webhook 或邮件配置"))
+            manager.close()
+            return 2
+    if not channels:
+        return 2
+
+    event = AlertEvent(
+        kind=args.kind,
+        title="告警通道自检",
+        detail="这是 AgentJudge 的测试告警，收到即表示通道可用。",
+        severity=args.severity,
+        session_id="alert-test",
+        tool="alert.test",
+        risk=100 if args.severity in {"critical", "high"} else 30,
+        decision_id="dec_selftest",
+    )
+    accepted = manager.enqueue(event)
+    manager.flush(timeout=float(args.wait))
+    if args.json:
+        print(
+            json.dumps(
+                {"accepted": accepted, "sent": manager.sent, "failed": manager.failed, "dropped": manager.dropped},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    else:
+        state = CONSOLE.green("成功") if manager.sent and not manager.failed else CONSOLE.red("失败")
+        print(f"\n发送结果：{state}  成功 {manager.sent} / 失败 {manager.failed} / 丢弃 {manager.dropped}\n")
+    ok = bool(manager.sent) and manager.failed == 0
+    manager.close()
+    return 0 if ok else 1
 
 
 def _find_datasets() -> str:
@@ -538,6 +604,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_doctor = sub.add_parser("doctor", help="环境自检")
     _add_common(p_doctor)
     p_doctor.set_defaults(func=cmd_doctor)
+
+    p_alert = sub.add_parser("alert", help="告警通道")
+    alert_sub = p_alert.add_subparsers(dest="alert_command", required=True)
+    a_test = alert_sub.add_parser("test", help="发送一条测试告警")
+    a_test.add_argument("--severity", default="critical", choices=["low", "medium", "high", "critical"])
+    a_test.add_argument("--kind", default="deny", choices=["deny", "escalate", "quarantine"])
+    a_test.add_argument("--wait", type=float, default=5.0, help="等待发送完成的秒数")
+    _add_common(a_test)
+    a_test.set_defaults(func=cmd_alert)
 
     return parser
 

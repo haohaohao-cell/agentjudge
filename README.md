@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/runtime%20dependencies-0-brightgreen)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-194%20passed-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-195%20passed-brightgreen)](tests/)
 
 > 徽章与链接按 `haohaohao-cell/agentjudge` 预置；若仓库名不同，全局替换即可。首次推送并跑通 CI 后徽章自动生效。
 
@@ -41,6 +41,7 @@ AgentJudge 把审计单元从单次调用扩展到**整个会话的数据流**�
 - **防篡改审计链**：HMAC-SHA256 链 + 数据库外独立尾锚，改一条记录即断链，删尾/清空/换尾都能被检出。
 - **告警与台账**：拦截/转人工/隔离即时推送到飞书、企业微信、钉钉、Slack、Webhook 或 SMTP 邮件；工作台内置跨会话「统一事件台账」，可导出 CSV / 自包含 HTML。
 - **零运行时依赖**：纯 Python 标准库实现（配置用 TOML），可离线、可内网、无 GPU、无外部服务。
+- **Run as MCP server: `agentjudge mcp`** —— 直接接入 Claude Desktop / Cursor，详见 [docs/mcp-server.md](docs/mcp-server.md)。
 - **旁路接入**：SDK 装饰器、HTTP API、MCP Server（stdio）、MCP 代理、OpenClaw pointer 插件，不改被监督方核心逻辑。
 - **实时工作台**：会话时间线、数据流边、规则命中证据、人工复核队列、审计链校验、技能体检，全部在一个页面里。
 
@@ -60,6 +61,9 @@ python run.py demo
 
 # 3) 启动工作台 http://127.0.0.1:8737
 python run.py serve
+
+# 4) Run as MCP server: agentjudge mcp（stdio，供 Claude Desktop / Cursor 接入）
+python run.py mcp
 ```
 
 Windows 直接 `cd` 进去跑同样的命令即可（`run.py` 是零安装启动器，自动把 `src/` 加进路径）。
@@ -86,7 +90,7 @@ agentjudge doctor
 | 良性任务完成率 | 96.4% |
 | 误报率 FPR | 3.6%（2 / 55，均为灰区运维操作） |
 | 裁决延迟 | p50 **0.48 ms** / p95 **0.80 ms** |
-| 单元测试 | 194 个，全部通过 |
+| 单元测试 | 195 个，全部通过 |
 
 > 数据来自自建语料，不代表第三方评测结论；复现方式与口径见 [`docs/evaluation.md`](docs/evaluation.md)。
 > 延迟为确定性路径（无 LLM 调用）在普通笔记本上的实测值。
@@ -367,7 +371,7 @@ agentjudge/
 ├── policies/               # 策略、监控模式
 ├── contracts/              # 工具合约、技能合约
 ├── datasets/               # 17 个红队场景 + 55 条良性语料
-├── tests/                  # 194 个测试
+├── tests/                  # 195 个测试
 ├── docs/                   # 架构、威胁模型、策略手册、API、部署、评测
 └── deploy/                 # Dockerfile、compose、systemd
 ```

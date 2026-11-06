@@ -19,9 +19,11 @@
   `intercept_tool_call` / `observe_tool_result` / `verify_audit` / `inspect_skill` /
   `get_policy` 五个工具，Claude Desktop、Cursor 可直接接入；
   `inspect_skill` 限制在 `--skill-root` 内，stdout 只输出协议消息。
+- **MCP 客户端 e2e 示例**：`examples/mcp_client.py` 连真实 MCP Server 子进程，
+  走完「放行 → 回传 → 拦截 → 隔离 → 污染会话收紧 → 链校验」，带 CI 回归测试。
 - **`agentjudge alert test`**：告警通道自检，退出码区分「全部成功 / 有失败 / 未配置」。
 - **测试**：告警 22 个、LLM 真实 HTTP 路径 8 个、CLI 端到端 10 个、
-  导出 13 个、回归守护 17 个、MCP 21 个，测试总数 98 → 194。
+  导出 13 个、回归守护 17 个、MCP 21 个、MCP e2e 1 个，测试总数 98 → 195。
 
 ### 变更
 

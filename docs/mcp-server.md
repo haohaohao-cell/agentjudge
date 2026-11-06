@@ -128,3 +128,29 @@ Cursor / 其他客户端同理：填 `command` + `args`，工作目录指向仓�
 # 自动化测试
 py -m unittest tests.test_mcp_server -v
 ```
+
+## 8. 完整客户端示例
+
+`examples/mcp_client.py` 会启动一个真实的 MCP Server 子进程，走完
+「握手 → 放行 → 回传 → 拦截 → 隔离 → 污染会话收紧 → 链校验」全流程：
+
+```bash
+py examples/mcp_client.py          # 人类可读
+py examples/mcp_client.py --json   # CI 断言用，退出码 0/1
+```
+
+输出示例：
+
+```
+ 1. ✓ 握手           {"name": "agentjudge", "version": "0.1.0"}
+ 2. ✓ 工具清单       ["intercept_tool_call", "observe_tool_result", "verify_audit", ...]
+ 3. ✓ 放行普通读取   {"tool": "fs.read", "risk": 0}
+ 5. ✓ 拦截危险命令   {"action": "deny", "rules": ["SHELL-ENV-DUMP"]}
+ 7. ✓ 读取即隔离     {"reason": "返回值含注入指令/隐藏载荷，已隔离…"}
+ 8. ✓ 污染会话收紧   {"action": "deny", "rules": ["DF-QUAR-001"]}
+ 9. ✓ 审计链校验     {"records": 7, "anchor": true}
+```
+
+这个示例有回归测试（`tests/test_mcp_e2e_example.py`），CI 每次都会真的跑一遍，
+所以文档里的输出不会悄悄过期。
+

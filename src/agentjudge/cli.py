@@ -6,6 +6,7 @@
     agentjudge audit verify          # 校验防篡改审计链
     agentjudge skill inspect <dir>   # 技能“言行”体检
     agentjudge alert test            # 告警通道自检
+    agentjudge mcp                   # 以 MCP Server 运行（stdio）
 """
 
 from __future__ import annotations
@@ -432,6 +433,26 @@ def cmd_rules(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """MCP Server 模式：stdio 上跑 JSON-RPC，stdout 只允许协议消息。"""
+    from .mcp_server import run_mcp_server
+
+    judge = build_judge(args)
+    if judge.policy.alerting.console:
+        # ConsoleNotifier 会往 stdout 打印，破坏 JSON-RPC 流
+        judge.policy.alerting.console = False
+        print("[agentjudge] 已临时关闭 alerting.console：MCP 模式下 stdout 只能输出协议消息", file=sys.stderr)
+    for stream in (sys.stdin, sys.stdout):
+        try:
+            stream.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        except (AttributeError, OSError, ValueError):
+            pass
+    try:
+        return run_mcp_server(judge, skill_root=args.skill_root)
+    finally:
+        judge.close()
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     judge = build_judge(args)
     c = CONSOLE
@@ -665,6 +686,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_doctor = sub.add_parser("doctor", help="环境自检")
     _add_common(p_doctor)
     p_doctor.set_defaults(func=cmd_doctor)
+
+    p_mcp = sub.add_parser("mcp", help="以 MCP Server 方式运行（stdio，供 Claude Desktop/Cursor 接入）")
+    p_mcp.add_argument("--skill-root", default=None, help="inspect_skill 允许访问的根目录（默认当前目录）")
+    _add_common(p_mcp)
+    p_mcp.set_defaults(func=cmd_mcp)
 
     p_alert = sub.add_parser("alert", help="告警通道")
     alert_sub = p_alert.add_subparsers(dest="alert_command", required=True)

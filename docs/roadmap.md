@@ -10,13 +10,15 @@
 - [x] 策略回归守护（基线 + CI 门禁）
 - [x] 告警：飞书 / 企业微信 / 钉钉 / Slack / Webhook / SMTP 邮件
 - [x] 技能言行体检与合约生成
+- [x] MCP Server（stdio）：裁决 / 结果复核 / 审计校验 / 技能体检作为工具暴露
 - [x] HTTP API、工作台、SDK、MCP/OpenClaw 适配
-- [x] 17 个红队场景 + 55 条良性语料 + 173 个测试
+- [x] 17 个红队场景 + 55 条良性语料 + 194 个测试
 
 ## v0.2 稳定性与集成
 
 - [ ] 官方 Python 包发布（PyPI）与 Docker 镜像（GHCR）
-- [ ] 更多框架适配：LangChain、AutoGen、OpenAI Agents SDK、Claude MCP 示例
+- [ ] 更多框架适配：LangChain、AutoGen、OpenAI Agents SDK
+- [ ] MCP：resources / prompts / 批量请求、远程 SSE 传输
 - [ ] 策略热加载 + 灰度（按工具/会话比例分流到 monitor）
 - [ ] 审计链路对接外部不可变存储（S3 Object Lock / 只读介质）
 - [ ] 分级复核工作台（按风险/业务线分派、SLA 计时）

@@ -44,7 +44,8 @@ audit from a single call to the **session-level data flow**.
   new false positives, higher ASR or a scene that used to pass.
 - **Zero runtime dependencies** — pure Python standard library (TOML config). Offline,
   air-gapped, no GPU, no external service.
-- **Sidecar integration** — SDK decorator, HTTP API, MCP proxy, OpenClaw pointer plugin.
+- **Sidecar integration** — SDK decorator, HTTP API, MCP server (stdio), MCP proxy,
+  OpenClaw pointer plugin.
 
 ## Quickstart
 
@@ -81,7 +82,7 @@ def run(command: str) -> str: ...
 | Benign task completion | 96.4% |
 | False positive rate | 3.6% (2 / 55 grey-zone ops) |
 | Decision latency | p50 **0.48 ms** / p95 **0.80 ms** |
-| Unit tests | 173 passing |
+| Unit tests | 194 passing |
 
 Self-built corpus; reproduce with `agentjudge eval`. See [docs/evaluation.md](docs/evaluation.md).
 
@@ -97,6 +98,7 @@ Self-built corpus; reproduce with `agentjudge eval`. See [docs/evaluation.md](do
 | [docs/api.md](docs/api.md) | HTTP API and SSE events |
 | [docs/deployment.md](docs/deployment.md) | Docker, systemd, key management, upgrades |
 | [docs/alerting.md](docs/alerting.md) | Feishu/WeCom/DingTalk/Slack/email alerting |
+| [docs/mcp-server.md](docs/mcp-server.md) | Run AgentJudge as an MCP server |
 | [docs/evaluation.md](docs/evaluation.md) | Metrics, datasets, how to add scenarios |
 | [docs/roadmap.md](docs/roadmap.md) | Roadmap |
 

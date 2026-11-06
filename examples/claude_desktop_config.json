@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agentjudge": {
+      "command": "py",
+      "args": ["run.py", "mcp", "--db", "var/agentjudge.db"],
+      "cwd": "D:\\agentjudge"
+    }
+  }
+}

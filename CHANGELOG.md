@@ -15,9 +15,13 @@
 - **策略回归守护**：`datasets/baseline.json` 固化基线，
   `eval --check` 在 ASR 上升、场景退化、新增误报或 FPR 超容差时返回退出码 1；
   CI 每次评测都过这道门禁。
+- **MCP Server**：`agentjudge mcp` 在 stdio 上跑标准 MCP JSON-RPC，暴露
+  `intercept_tool_call` / `observe_tool_result` / `verify_audit` / `inspect_skill` /
+  `get_policy` 五个工具，Claude Desktop、Cursor 可直接接入；
+  `inspect_skill` 限制在 `--skill-root` 内，stdout 只输出协议消息。
 - **`agentjudge alert test`**：告警通道自检，退出码区分「全部成功 / 有失败 / 未配置」。
 - **测试**：告警 22 个、LLM 真实 HTTP 路径 8 个、CLI 端到端 10 个、
-  导出 13 个、回归守护 17 个，测试总数 98 → 173。
+  导出 13 个、回归守护 17 个、MCP 21 个，测试总数 98 → 194。
 
 ### 变更
 
